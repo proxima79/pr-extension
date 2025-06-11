@@ -28,8 +28,16 @@ export function activate(context: vscode.ExtensionContext) {
 		await checkAzureCliStatus(azureCliService);
 	});
 
+	const listModelsCommand = vscode.commands.registerCommand('smart-pr-creator.listAvailableModels', async () => {
+		await listAvailableAIModels();
+	});
+
+	const selectModelCommand = vscode.commands.registerCommand('smart-pr-creator.selectAIModel', async () => {
+		await selectAIModel();
+	});
+
 	// Add commands to subscriptions
-	context.subscriptions.push(createPRCommand, createPRWithAICommand, analyzeBranchCommand, checkStatusCommand);
+	context.subscriptions.push(createPRCommand, createPRWithAICommand, analyzeBranchCommand, checkStatusCommand, listModelsCommand, selectModelCommand);
 
 	// Register status bar item
 	const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -177,7 +185,7 @@ async function createPullRequest(useAI: boolean, azureCliService: AzureCliServic
 			progress.report({ increment: 10, message: 'Generating description...' });
 
 			// Generate description
-			const description = await azureCliService.generateAIDescription(commits, changedFiles, useAI);
+			const description = await azureCliService.generateAIDescription(commits, changedFiles, useAI, workspacePath);
 
 			// Ask if user wants to edit the description
 			const editDescription = await vscode.window.showQuickPick(
@@ -544,6 +552,272 @@ async function checkAzureCliStatus(azureCliService: AzureCliService) {
 	} catch (error) {
 		vscode.window.showErrorMessage(`Failed to check Azure CLI status: ${error}`);
 	}
+}
+
+async function listAvailableAIModels() {
+	try {
+		const { AIService } = await import('./services/aiService.js');
+		const aiService = new AIService();
+
+		await vscode.window.withProgress({
+			location: vscode.ProgressLocation.Notification,
+			title: 'Discovering available AI models...',
+			cancellable: false
+		}, async (progress) => {
+			
+			progress.report({ increment: 20, message: 'Checking VS Code Language Model API...' });
+			
+			const availableModels = await aiService.getAvailableModels();
+			const copilotModels = await aiService.getCopilotModels();
+
+			progress.report({ increment: 80, message: 'Preparing model list...' });
+
+			// Create webview to display available models
+			const panel = vscode.window.createWebviewPanel(
+				'availableModels',
+				'Available AI Models',
+				vscode.ViewColumn.One,
+				{
+					enableScripts: true
+				}
+			);
+
+			panel.webview.html = generateModelListHTML(availableModels, copilotModels);
+		});
+
+	} catch (error) {
+		vscode.window.showErrorMessage(`Failed to list AI models: ${error}`);
+	}
+}
+
+async function selectAIModel() {
+	try {
+		const { AIService } = await import('./services/aiService.js');
+		const aiService = new AIService();
+
+		// Get available models
+		const availableModels = await aiService.getAvailableModels();
+		
+		if (availableModels.length === 0) {
+			vscode.window.showWarningMessage('No AI models are currently available. Please ensure GitHub Copilot or other language model extensions are installed and logged in.');
+			return;
+		}
+
+		// Create quick pick items
+		const quickPickItems = [
+			{
+				label: '$(star) auto',
+				description: 'Automatically select the best available model',
+				detail: 'Recommended: Let the extension choose the optimal model',
+				modelValue: 'auto'
+			},
+			...availableModels.map(model => ({
+				label: `$(robot) ${model.name}`,
+				description: `${model.vendor}/${model.family}`,
+				detail: `Max tokens: ${model.maxInputTokens.toLocaleString()} | Version: ${model.version}`,
+				modelValue: model.family
+			}))
+		];
+
+		// Show quick pick
+		const selected = await vscode.window.showQuickPick(quickPickItems, {
+			title: 'Select AI Model for PR Descriptions',
+			placeHolder: 'Choose an AI model to use for generating pull request descriptions',
+			matchOnDescription: true,
+			matchOnDetail: true
+		});
+
+		if (selected) {
+			// Update configuration
+			const config = vscode.workspace.getConfiguration('smartPrCreator');
+			await config.update('aiModel', selected.modelValue, vscode.ConfigurationTarget.Global);
+			
+			vscode.window.showInformationMessage(
+				`AI model updated to: ${selected.label.replace('$(robot) ', '').replace('$(star) ', '')}`,
+				'Test with PR Creation'
+			).then(action => {
+				if (action === 'Test with PR Creation') {
+					vscode.commands.executeCommand('smart-pr-creator.createPRWithAI');
+				}
+			});
+		}
+
+	} catch (error) {
+		vscode.window.showErrorMessage(`Failed to select AI model: ${error}`);
+	}
+}
+
+function generateModelListHTML(allModels: any[], copilotModels: any[]): string {
+	const generateModelTable = (models: any[], title: string) => {
+		if (models.length === 0) {
+			return `<p><em>No ${title.toLowerCase()} available</em></p>`;
+		}
+
+		return `
+			<table>
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>ID</th>
+						<th>Vendor</th>
+						<th>Family</th>
+						<th>Version</th>
+						<th>Max Tokens</th>
+					</tr>
+				</thead>
+				<tbody>
+					${models.map(model => `
+						<tr>
+							<td><strong>${model.name}</strong></td>
+							<td><code>${model.id}</code></td>
+							<td>${model.vendor}</td>
+							<td>${model.family}</td>
+							<td>${model.version}</td>
+							<td>${model.maxInputTokens.toLocaleString()}</td>
+						</tr>
+					`).join('')}
+				</tbody>
+			</table>
+		`;
+	};
+
+	return `
+		<!DOCTYPE html>
+		<html lang="en">
+		<head>
+			<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+			<title>Available AI Models</title>
+			<style>
+				body {
+					margin: 20px;
+					font-family: var(--vscode-font-family);
+					line-height: 1.6;
+					color: var(--vscode-foreground);
+					background-color: var(--vscode-editor-background);
+				}
+				.header {
+					background: var(--vscode-button-background);
+					color: var(--vscode-button-foreground);
+					padding: 20px;
+					border-radius: 8px;
+					margin-bottom: 20px;
+					border: 1px solid var(--vscode-button-border, transparent);
+				}
+				.section {
+					margin: 20px 0;
+					padding: 15px;
+					border: 1px solid var(--vscode-panel-border);
+					border-radius: 8px;
+					background-color: var(--vscode-editor-background);
+				}
+				table {
+					width: 100%;
+					border-collapse: collapse;
+					margin: 10px 0;
+				}
+				th, td {
+					border: 1px solid var(--vscode-panel-border);
+					padding: 8px;
+					text-align: left;
+					color: var(--vscode-foreground);
+				}
+				th {
+					background-color: var(--vscode-textBlockQuote-background);
+					font-weight: bold;
+				}
+				tr:nth-child(even) {
+					background-color: var(--vscode-list-hoverBackground);
+				}
+				tr:hover {
+					background-color: var(--vscode-list-focusBackground);
+				}
+				code {
+					background-color: var(--vscode-textCodeBlock-background);
+					color: var(--vscode-textPreformat-foreground);
+					padding: 2px 4px;
+					border-radius: 3px;
+					font-family: var(--vscode-editor-font-family);
+				}
+				.config-section {
+					background-color: var(--vscode-textBlockQuote-background);
+					color: var(--vscode-foreground);
+					padding: 15px;
+					border-radius: 8px;
+					margin: 20px 0;
+					border: 1px solid var(--vscode-textBlockQuote-border);
+				}
+				.model-count {
+					color: var(--vscode-descriptionForeground);
+					font-style: italic;
+				}
+				h1, h2, h3 {
+					color: var(--vscode-foreground);
+				}
+				ul, ol {
+					color: var(--vscode-foreground);
+				}
+				li {
+					margin: 5px 0;
+				}
+				a {
+					color: var(--vscode-textLink-foreground);
+				}
+				a:hover {
+					color: var(--vscode-textLink-activeForeground);
+				}
+				strong {
+					color: var(--vscode-foreground);
+				}
+			</style>
+		</head>
+		<body>
+			<div class="header">
+				<h1>🤖 Available AI Models</h1>
+				<p>Models available through VS Code's Language Model API</p>
+			</div>
+
+			<div class="config-section">
+				<h2>Configuration</h2>
+				<p>To use a specific model, update your settings:</p>
+				<ul>
+					<li><strong>AI Provider:</strong> Set <code>smartPrCreator.aiProvider</code> to "copilot"</li>
+					<li><strong>AI Model:</strong> Set <code>smartPrCreator.aiModel</code> to desired model family (e.g., "gpt-4o", "claude-3-5-sonnet")</li>
+				</ul>
+			</div>
+
+			<div class="section">
+				<h2>🚀 GitHub Copilot Models <span class="model-count">(${copilotModels.length} available)</span></h2>
+				<p>Models specifically available through GitHub Copilot integration:</p>
+				${generateModelTable(copilotModels, 'Copilot models')}
+			</div>
+
+			<div class="section">
+				<h2>🌐 All Available Models <span class="model-count">(${allModels.length} total)</span></h2>
+				<p>All models accessible through VS Code's Language Model API:</p>
+				${generateModelTable(allModels, 'models')}
+			</div>
+
+			${allModels.length === 0 ? `
+			<div class="section" style="background-color: var(--vscode-inputValidation-warningBackground, #ffcc02); border-color: var(--vscode-inputValidation-warningBorder, #ffcc02); color: var(--vscode-inputValidation-warningForeground, #000);">
+				<h3>⚠️ No Models Available</h3>
+				<p>No AI models are currently available. This could be because:</p>
+				<ul>
+					<li>GitHub Copilot extension is not installed or not logged in</li>
+					<li>VS Code Language Model API is not available in your VS Code version</li>
+					<li>No language model extensions are installed</li>
+				</ul>
+				<p><strong>To get started:</strong></p>
+				<ol>
+					<li>Install the GitHub Copilot extension</li>
+					<li>Sign in to GitHub Copilot</li>
+					<li>Restart VS Code and try again</li>
+				</ol>
+			</div>
+			` : ''}
+		</body>
+		</html>
+	`;
 }
 
 // This method is called when your extension is deactivated

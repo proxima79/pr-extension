@@ -36,6 +36,18 @@
         "icon": "$(search)"
       },
       {
+        "command": "smart-pr-creator.listAvailableModels",
+        "title": "List Available AI Models",
+        "category": "Smart PR Creator",
+        "icon": "$(list-unordered)"
+      },
+      {
+        "command": "smart-pr-creator.selectAIModel",
+        "title": "Select AI Model",
+        "category": "Smart PR Creator",
+        "icon": "$(settings-gear)"
+      },
+      {
         "command": "smart-pr-creator.checkAzureStatus",
         "title": "Check Azure CLI Status",
         "category": "Smart PR Creator",
@@ -79,12 +91,27 @@
         "smartPrCreator.aiProvider": {
           "type": "string",
           "enum": [
+            "copilot",
             "openai",
             "azure-openai",
             "anthropic"
           ],
-          "default": "openai",
+          "default": "copilot",
           "description": "AI provider for generating PR descriptions"
+        },
+        "smartPrCreator.aiModel": {
+          "type": "string",
+          "enum": [
+            "gpt-4o",
+            "gpt-4o-mini",
+            "claude-3-5-sonnet",
+            "claude-sonnet",
+            "o1-preview",
+            "o1-mini",
+            "auto"
+          ],
+          "default": "auto",
+          "description": "Specific AI model to use (auto = best available model for provider)"
         },
         "smartPrCreator.includeFileChanges": {
           "type": "boolean",

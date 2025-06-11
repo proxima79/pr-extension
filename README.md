@@ -1,19 +1,26 @@
 # Smart PR Creator
 
-A VS Code extension that automates pull request creation with AI-generated descriptions. This extension integrates with Azure DevOps using Azure CLI to streamline your workflow.
+A VS Code extension that automates pull request creation with AI-generated descriptions. This extension integrates with Azure DevOps using Azure CLI and leverages GitHub Copilot for intelligent PR descriptions.
 
 ## Features
 
-- **🤖 AI-Powered Descriptions**: Generate intelligent PR descriptions based on your code changes
+- **🤖 GitHub Copilot Integration**: Generate intelligent PR descriptions using GitHub Copilot's language models
 - **☁️ Azure DevOps Integration**: Full integration with Azure DevOps using Azure CLI
-- **📝 Smart Analysis**: Analyze commits, changed files, and work items automatically
+- **📝 Smart Analysis**: Analyze commits, changed files, and work items automatically with AI insights
 - **👥 Reviewer Management**: Add reviewers directly from VS Code
 - **🔄 Branch Status**: Check if your branch is up-to-date before creating PRs
 - **📋 Work Item Linking**: Automatically detect and link work items from commits
 - **⚡ Quick Actions**: Create PRs directly from the Source Control panel
 - **🔍 Status Checking**: Monitor Azure CLI setup and authentication status
+- **🧠 AI Provider Options**: Choose between GitHub Copilot, OpenAI, Azure OpenAI, or Anthropic
 
 ## Prerequisites
+
+### GitHub Copilot (Recommended)
+
+- **GitHub Copilot Subscription**: Required for AI-powered PR descriptions
+- **VS Code Copilot Extension**: Install the GitHub Copilot extension
+- **Signed in to GitHub**: Ensure you're authenticated with GitHub Copilot
 
 ### Azure CLI Setup
 
@@ -67,21 +74,74 @@ Use `Smart PR Creator: Check Azure CLI Status` to verify:
 
 ## Commands
 
-| Command                             | Description                    |
-| ----------------------------------- | ------------------------------ |
-| `smart-pr-creator.createPR`         | Create a basic pull request    |
-| `smart-pr-creator.createPRWithAI`   | Create PR with AI description  |
-| `smart-pr-creator.analyzeBranch`    | Analyze current branch changes |
-| `smart-pr-creator.checkAzureStatus` | Check Azure CLI status         |
+| Command                                | Description                         |
+| -------------------------------------- | ----------------------------------- |
+| `smart-pr-creator.createPR`            | Create a basic pull request         |
+| `smart-pr-creator.createPRWithAI`      | Create PR with AI description       |
+| `smart-pr-creator.analyzeBranch`       | Analyze current branch changes      |
+| `smart-pr-creator.checkAzureStatus`    | Check Azure CLI status              |
+| `smart-pr-creator.listAvailableModels` | List available AI models            |
+| `smart-pr-creator.selectAIModel`       | Select AI model for PR descriptions |
 
 ## Configuration
 
-| Setting                                  | Description                         | Default |
-| ---------------------------------------- | ----------------------------------- | ------- |
-| `smartPrCreator.defaultTarget`           | Default target branch               | `main`  |
-| `smartPrCreator.aiProvider`              | AI provider for descriptions        | `mock`  |
-| `smartPrCreator.includeFileChanges`      | Include file changes in description | `true`  |
-| `smartPrCreator.maxCommitsInDescription` | Max commits to include              | `5`     |
+| Setting                             | Description                         | Default   |
+| ----------------------------------- | ----------------------------------- | --------- |
+| `smartPrCreator.defaultTarget`      | Default target branch               | `main`    |
+| `smartPrCreator.aiProvider`         | AI provider for descriptions        | `copilot` |
+| `smartPrCreator.aiModel`            | Specific AI model to use            | `auto`    |
+| `smartPrCreator.includeFileChanges` | Include file changes in description | `true`    |
+| `smartPrCreator.maxFilesToAnalyze`  | Maximum files to analyze for AI     | `50`      |
+| `smartPrCreator.platform`           | Git hosting platform                | `azure`   |
+
+### AI Provider Options
+
+- **`copilot`** (Default): Use GitHub Copilot's language models for intelligent descriptions
+- **`openai`**: Use OpenAI's GPT models (requires API key)
+- **`azure-openai`**: Use Azure OpenAI Service (requires configuration)
+- **`anthropic`**: Use Anthropic's Claude models (requires API key)
+
+### AI Model Selection
+
+The extension supports multiple AI models through VS Code's Language Model API:
+
+#### Available Models
+
+- **`auto`** (Default): Automatically select the best available model
+- **`gpt-4o`**: OpenAI's latest GPT-4 Omni model
+- **`gpt-4o-mini`**: Lightweight version of GPT-4 Omni
+- **`claude-3-5-sonnet`**: Anthropic's Claude 3.5 Sonnet (via Copilot)
+- **`claude-sonnet`**: Alias for Claude 3.5 Sonnet
+- **`o1-preview`**: OpenAI's O1 reasoning model
+- **`o1-mini`**: Lightweight O1 model
+
+#### Model Discovery
+
+Use the `Smart PR Creator: List Available AI Models` command to see what models are currently available in your VS Code installation. Model availability depends on:
+
+- GitHub Copilot extension installation and authentication
+- VS Code version (Language Model API support)
+- Enabled language model extensions
+
+#### Model Selection
+
+Use the `Smart PR Creator: Select AI Model` command for an interactive model picker, or configure directly in settings:
+
+```json
+{
+  "smartPrCreator.aiProvider": "copilot",
+  "smartPrCreator.aiModel": "claude-3-5-sonnet"
+}
+```
+
+### GitHub Copilot Configuration
+
+When using the `copilot` AI provider:
+
+- Ensure you have an active GitHub Copilot subscription
+- The GitHub Copilot extension must be installed and enabled
+- You must be signed in to your GitHub account
+- The extension uses GPT-4o model family for optimal code understanding
 
 ## Azure CLI Integration Features
 

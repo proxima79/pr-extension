@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import * as cp from 'child_process';
 import { promisify } from 'util';
+import { AIService } from './aiService';
+import { GitChange, GitCommit } from './gitService';
 
 const exec = promisify(cp.exec);
 
@@ -222,46 +224,166 @@ export class AzureCliService {
         }
     }
 
+    /**
+     * Generates AI-powered pull request descriptions using GitHub Copilot and other AI models
+     * This method now integrates with the real AIService instead of using mock data
+     * 
+     * @param commits Array of commit strings from git log
+     * @param changedFiles Array of changed file strings from git status
+     * @param useAI Whether to use AI generation or fallback to basic description
+     * @param workspaceFolder Optional workspace folder path
+     * @returns Promise<string> Generated PR description
+     */
     async generateAIDescription(
         commits: string[],
         changedFiles: string[],
-        useAI: boolean
+        useAI: boolean,
+        workspaceFolder?: string
     ): Promise<string> {
         if (!useAI || commits.length === 0) {
             return this.generateBasicDescription(commits, changedFiles);
         }
 
-        // AI-enhanced description (mock implementation for now)
-        let description = '## Summary\n';
-        description += 'This pull request includes the following changes:\n\n';
-        
-        if (commits.length > 0) {
-            description += '### Recent Commits\n';
-            commits.slice(0, 3).forEach(commit => {
-                description += `- ${commit}\n`;
-            });
-            
-            if (commits.length > 3) {
-                description += `- ... and ${commits.length - 3} more commits\n`;
+        try {
+            // Initialize real AI service with multi-model support (GPT-4o, Claude Sonnet, etc.)
+            const aiService = new AIService();
+
+            // Get workspace folder if not provided
+            const wsFolder = workspaceFolder || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            if (!wsFolder) {
+                throw new Error('No workspace folder available');
             }
-            description += '\n';
+
+            // Get enhanced git information
+            const [gitCommits, gitChanges, currentBranch, defaultBranch] = await Promise.all([
+                this.getEnhancedCommits(wsFolder),
+                this.getEnhancedChanges(wsFolder, changedFiles),
+                this.getCurrentBranch(wsFolder),
+                this.getDefaultBranch(wsFolder)
+            ]);
+
+            // Generate AI-powered description
+            const prDescription = await aiService.generatePRDescription(
+                gitChanges,
+                gitCommits,
+                currentBranch,
+                defaultBranch
+            );
+
+            return prDescription.description;
+
+        } catch (error) {
+            console.error('AI description generation failed:', error);
+            vscode.window.showWarningMessage('AI description generation failed, using basic description');
+            return this.generateBasicDescription(commits, changedFiles);
         }
+    }
 
-        if (changedFiles.length > 0) {
-            description += '### Files Changed\n';
-            const fileCount = changedFiles.length;
-            description += `This PR modifies ${fileCount} file(s).\n\n`;
+    private async getEnhancedCommits(workspaceFolder: string): Promise<GitCommit[]> {
+        try {
+            // Get detailed commit information including author and date
+            const { stdout } = await exec(
+                'git log --oneline --format="%H|%an|%ad|%s" --date=iso -10',
+                { cwd: workspaceFolder }
+            );
+            
+            return stdout.trim().split('\n')
+                .filter(line => line.length > 0)
+                .map(line => {
+                    const [hash, author, dateStr, ...messageParts] = line.split('|');
+                    return {
+                        hash: hash,
+                        author: author || 'Unknown',
+                        date: new Date(dateStr || Date.now()),
+                        message: messageParts.join('|') || 'No message'
+                    };
+                });
+        } catch (error) {
+            console.error('Error getting enhanced commits:', error);
+            // Fallback to basic parsing
+            const commits = await this.getRecentCommits(workspaceFolder);
+            return commits.map((commitLine, index) => {
+                const parts = commitLine.split(' ');
+                const hash = parts[0];
+                const message = parts.slice(1).join(' ');
+                
+                return {
+                    hash: hash,
+                    message: message,
+                    author: 'Unknown',
+                    date: new Date()
+                };
+            });
         }
+    }
 
-        description += '### Impact\n';
-        description += 'These changes improve the codebase by:\n';
-        description += '- Enhancing functionality\n';
-        description += '- Improving code quality\n';
-        description += '- Following best practices\n\n';
+    private async getEnhancedChanges(workspaceFolder: string, changedFiles: string[]): Promise<GitChange[]> {
+        try {
+            // Get detailed file changes with insertion/deletion counts
+            const { stdout } = await exec('git diff --stat HEAD', { cwd: workspaceFolder });
+            const statLines = stdout.trim().split('\n').filter(line => line.includes('|'));
+            
+            const statsMap = new Map<string, { insertions: number; deletions: number }>();
+            
+            statLines.forEach(line => {
+                const match = line.match(/^(.+?)\s+\|\s+\d+\s+([+-]+)/);
+                if (match) {
+                    const filename = match[1].trim();
+                    const changes = match[2];
+                    const insertions = (changes.match(/\+/g) || []).length;
+                    const deletions = (changes.match(/-/g) || []).length;
+                    statsMap.set(filename, { insertions, deletions });
+                }
+            });
 
-        description += '---\n*Generated by Smart PR Creator*';
-        
-        return description;
+            return changedFiles.map(fileLine => {
+                // Parse git status line: " M filename" or "A  filename" etc.
+                const statusChar = fileLine.charAt(1) || fileLine.charAt(0);
+                const filename = fileLine.substring(2).trim() || fileLine.substring(1).trim();
+                
+                let status: 'added' | 'modified' | 'deleted' | 'renamed';
+                switch (statusChar) {
+                    case 'A':
+                        status = 'added';
+                        break;
+                    case 'D':
+                        status = 'deleted';
+                        break;
+                    case 'R':
+                        status = 'renamed';
+                        break;
+                    case 'M':
+                    default:
+                        status = 'modified';
+                        break;
+                }
+
+                const stats = statsMap.get(filename);
+                return {
+                    file: filename,
+                    status: status,
+                    insertions: stats?.insertions,
+                    deletions: stats?.deletions
+                };
+            });
+        } catch (error) {
+            console.error('Error getting enhanced changes:', error);
+            // Fallback to basic parsing
+            return changedFiles.map(fileLine => {
+                const statusChar = fileLine.charAt(1) || fileLine.charAt(0);
+                const filename = fileLine.substring(2).trim() || fileLine.substring(1).trim();
+                
+                let status: 'added' | 'modified' | 'deleted' | 'renamed';
+                switch (statusChar) {
+                    case 'A': status = 'added'; break;
+                    case 'D': status = 'deleted'; break;
+                    case 'R': status = 'renamed'; break;
+                    case 'M': default: status = 'modified'; break;
+                }
+
+                return { file: filename, status: status };
+            });
+        }
     }
 
     private generateBasicDescription(commits: string[], changedFiles: string[]): string {
