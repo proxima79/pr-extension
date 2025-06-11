@@ -1,0 +1,126 @@
+{
+  "name": "smart-pr-creator",
+  "displayName": "Smart PR Creator",
+  "description": "Automatically create pull requests with AI-generated descriptions",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "categories": [
+    "SCM Providers",
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:smart-pr-creator.createPR",
+    "onCommand:smart-pr-creator.createPRWithAI"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "smart-pr-creator.createPR",
+        "title": "Create Pull Request",
+        "category": "Smart PR Creator",
+        "icon": "$(git-pull-request)"
+      },
+      {
+        "command": "smart-pr-creator.createPRWithAI",
+        "title": "Create PR with AI Description",
+        "category": "Smart PR Creator",
+        "icon": "$(sparkle)"
+      },
+      {
+        "command": "smart-pr-creator.analyzeBranch",
+        "title": "Analyze Current Branch",
+        "category": "Smart PR Creator",
+        "icon": "$(search)"
+      }
+    ],
+    "menus": {
+      "scm/title": [
+        {
+          "command": "smart-pr-creator.createPRWithAI",
+          "when": "scmProvider == git",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "smart-pr-creator.createPR",
+          "when": "gitOpenRepositoryCount != 0"
+        },
+        {
+          "command": "smart-pr-creator.createPRWithAI",
+          "when": "gitOpenRepositoryCount != 0"
+        },
+        {
+          "command": "smart-pr-creator.analyzeBranch",
+          "when": "gitOpenRepositoryCount != 0"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Smart PR Creator",
+      "properties": {
+        "smartPrCreator.defaultTarget": {
+          "type": "string",
+          "default": "main",
+          "description": "Default target branch for pull requests"
+        },
+        "smartPrCreator.aiProvider": {
+          "type": "string",
+          "enum": ["openai", "azure-openai", "anthropic"],
+          "default": "openai",
+          "description": "AI provider for generating PR descriptions"
+        },
+        "smartPrCreator.includeFileChanges": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include file changes in AI analysis"
+        },
+        "smartPrCreator.maxFilesToAnalyze": {
+          "type": "number",
+          "default": 50,
+          "description": "Maximum number of files to analyze for AI description"
+        },
+        "smartPrCreator.platform": {
+          "type": "string",
+          "enum": ["github", "azure-devops", "gitlab"],
+          "default": "github",
+          "description": "Git hosting platform"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.100.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@typescript-eslint/eslint-plugin": "^8.31.1",
+    "@typescript-eslint/parser": "^8.31.1",
+    "eslint": "^9.25.1",
+    "esbuild": "^0.25.3",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.3",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.5.2"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "simple-git": "^3.25.0"
+  }
+}
