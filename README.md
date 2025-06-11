@@ -1,75 +1,164 @@
 # Smart PR Creator
 
-A VS Code extension that automates pull request creation with AI-generated descriptions.
+A VS Code extension that automates pull request creation with AI-generated descriptions. This extension integrates with Azure DevOps using Azure CLI to streamline your workflow.
 
-## 🎯 Features
+## Features
 
-- **Quick PR Creation**: Create pull requests directly from VS Code command palette
-- **AI-Powered Descriptions**: Generate meaningful PR descriptions based on your code changes
-- **Multi-Platform Support**: Works with GitHub, Azure DevOps, and GitLab
-- **Branch Analysis**: Analyze your current branch and get suggestions
-- **Git Integration**: Seamlessly integrates with VS Code's git features
+- **🤖 AI-Powered Descriptions**: Generate intelligent PR descriptions based on your code changes
+- **☁️ Azure DevOps Integration**: Full integration with Azure DevOps using Azure CLI
+- **📝 Smart Analysis**: Analyze commits, changed files, and work items automatically
+- **👥 Reviewer Management**: Add reviewers directly from VS Code
+- **🔄 Branch Status**: Check if your branch is up-to-date before creating PRs
+- **📋 Work Item Linking**: Automatically detect and link work items from commits
+- **⚡ Quick Actions**: Create PRs directly from the Source Control panel
+- **🔍 Status Checking**: Monitor Azure CLI setup and authentication status
 
-For example if there is an image subfolder under your extension project workspace:
+## Prerequisites
 
-\!\[feature X\]\(images/feature-x.png\)
+### Azure CLI Setup
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+1. **Install Azure CLI**: Download from [Microsoft Docs](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+2. **Install DevOps Extension**:
+   ```bash
+   az extension add --name azure-devops
+   ```
+3. **Login to Azure**:
+   ```bash
+   az login
+   ```
 
-## Requirements
+### Repository Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- Your repository must be hosted on Azure DevOps
+- You must have push access to the repository
+- The repository must be a Git repository
 
-## Extension Settings
+## Usage
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+### Creating Pull Requests
 
-For example:
+1. **Open Command Palette**: `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
+2. **Choose a command**:
+   - `Smart PR Creator: Create Pull Request` - Basic PR creation
+   - `Smart PR Creator: Create PR with AI Description` - AI-enhanced PR creation
+3. **Follow the guided workflow**:
+   - The extension will validate your Azure CLI setup
+   - Select target branch (automatically detects default branch)
+   - Enter PR title (auto-generated from recent commits)
+   - Choose description handling (generated, edited, or custom)
+   - Add work items (auto-detected from commit messages)
+   - Select reviewers (loaded from your Azure DevOps organization)
+   - Choose draft status
 
-This extension contributes the following settings:
+### Quick Actions
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+- **Status Bar**: Click the "Smart PR" button in the status bar for quick access
+- **Source Control Panel**: Use the PR button in the Git Source Control panel
+- **Command Palette**: Access all commands via `Ctrl+Shift+P`
 
-## Known Issues
+### Checking Azure CLI Status
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+Use `Smart PR Creator: Check Azure CLI Status` to verify:
 
-## Release Notes
+- Azure CLI installation
+- DevOps extension status
+- Authentication status
+- Current organization and project configuration
 
-Users appreciate release notes as you update your extension.
+## Commands
 
-### 1.0.0
+| Command                             | Description                    |
+| ----------------------------------- | ------------------------------ |
+| `smart-pr-creator.createPR`         | Create a basic pull request    |
+| `smart-pr-creator.createPRWithAI`   | Create PR with AI description  |
+| `smart-pr-creator.analyzeBranch`    | Analyze current branch changes |
+| `smart-pr-creator.checkAzureStatus` | Check Azure CLI status         |
 
-Initial release of ...
+## Configuration
 
-### 1.0.1
+| Setting                                  | Description                         | Default |
+| ---------------------------------------- | ----------------------------------- | ------- |
+| `smartPrCreator.defaultTarget`           | Default target branch               | `main`  |
+| `smartPrCreator.aiProvider`              | AI provider for descriptions        | `mock`  |
+| `smartPrCreator.includeFileChanges`      | Include file changes in description | `true`  |
+| `smartPrCreator.maxCommitsInDescription` | Max commits to include              | `5`     |
 
-Fixed issue #.
+## Azure CLI Integration Features
 
-### 1.1.0
+### Automatic Detection
 
-Added features X, Y, and Z.
+- Repository information (organization, project, repo name)
+- Current branch and status
+- Work items from commit messages (e.g., `#1234`, `AB#1234`)
+- Default branch configuration
 
----
+### Branch Management
 
-## Following extension guidelines
+- Check if branch is ahead/behind target
+- Automatic branch pushing
+- Branch status validation
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+### Work Item Integration
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+- Auto-detect work item references in commits
+- Link work items to pull requests
+- Support for various work item ID formats
 
-## Working with Markdown
+### Reviewer Management
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+- Load available reviewers from organization
+- Multi-select reviewer interface
+- Optional reviewer assignment
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+## Troubleshooting
 
-## For more information
+### Common Issues
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+1. **"Azure CLI not found"**
 
-**Enjoy!**
+   - Install Azure CLI from [Microsoft Docs](https://docs.microsoft.com/cli/azure/install-azure-cli)
+   - Restart VS Code after installation
+
+2. **"DevOps extension not installed"**
+
+   - Run: `az extension add --name azure-devops`
+   - The extension can auto-install with permission
+
+3. **"Not logged in"**
+
+   - Run: `az login`
+   - Follow the browser authentication flow
+
+4. **"Not an Azure DevOps repository"**
+
+   - Ensure your repository's remote URL points to Azure DevOps
+   - Check with: `git remote get-url origin`
+
+5. **"Branch not found on remote"**
+   - Push your branch first: `git push origin <branch-name>`
+   - The extension can auto-push with permission
+
+## Development
+
+### Setup
+
+```bash
+npm install
+npm run compile
+```
+
+### Testing
+
+```bash
+npm test
+```
+
+### Building
+
+```bash
+npm run package
+```
+
+## License
+
+This project is licensed under the MIT License.

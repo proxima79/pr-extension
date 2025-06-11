@@ -34,6 +34,12 @@
         "title": "Analyze Current Branch",
         "category": "Smart PR Creator",
         "icon": "$(search)"
+      },
+      {
+        "command": "smart-pr-creator.checkAzureStatus",
+        "title": "Check Azure CLI Status",
+        "category": "Smart PR Creator",
+        "icon": "$(azure)"
       }
     ],
     "menus": {
@@ -56,6 +62,9 @@
         {
           "command": "smart-pr-creator.analyzeBranch",
           "when": "gitOpenRepositoryCount != 0"
+        },
+        {
+          "command": "smart-pr-creator.checkAzureStatus"
         }
       ]
     },
@@ -69,7 +78,11 @@
         },
         "smartPrCreator.aiProvider": {
           "type": "string",
-          "enum": ["openai", "azure-openai", "anthropic"],
+          "enum": [
+            "openai",
+            "azure-openai",
+            "anthropic"
+          ],
           "default": "openai",
           "description": "AI provider for generating PR descriptions"
         },
@@ -85,7 +98,11 @@
         },
         "smartPrCreator.platform": {
           "type": "string",
-          "enum": ["github", "azure-devops", "gitlab"],
+          "enum": [
+            "github",
+            "azure-devops",
+            "gitlab"
+          ],
           "default": "github",
           "description": "Git hosting platform"
         }

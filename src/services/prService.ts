@@ -277,7 +277,9 @@ export class PRService {
             switch (platform) {
                 case 'github':
                     const githubToken = await this.getGitHubToken();
-                    if (!githubToken) return false;
+                    if (!githubToken) {
+                        return false;
+                    }
                     
                     const { owner, repo } = this.parseGitHubUrl(repositoryUrl);
                     const response = await axios.get(
