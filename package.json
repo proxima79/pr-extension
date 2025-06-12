@@ -1,11 +1,29 @@
 {
   "name": "smart-pr-creator",
   "displayName": "Smart PR Creator",
-  "description": "Automatically create pull requests with AI-generated descriptions",
-  "version": "0.0.1",
+  "description": "Automatically create pull requests with AI-generated descriptions and team notifications",
+  "version": "1.0.0",
+  "publisher": "smart-pr-creator",
   "engines": {
     "vscode": "^1.100.0"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/smart-pr-creator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-username/smart-pr-creator/issues"
+  },
+  "homepage": "https://github.com/your-username/smart-pr-creator#readme",
+  "keywords": [
+    "pull-request",
+    "azure-devops", 
+    "ai",
+    "github-copilot",
+    "webhook",
+    "teams",
+    "automation"
+  ],
   "categories": [
     "SCM Providers",
     "Other"
@@ -52,6 +70,24 @@
         "title": "Check Azure CLI Status",
         "category": "Smart PR Creator",
         "icon": "$(azure)"
+      },
+      {
+        "command": "smart-pr-creator.configureWebhooks",
+        "title": "Configure Webhooks",
+        "category": "Smart PR Creator",
+        "icon": "$(settings)"
+      },
+      {
+        "command": "smart-pr-creator.testWebhook",
+        "title": "Test Webhook Connection",
+        "category": "Smart PR Creator",
+        "icon": "$(debug-alt)"
+      },
+      {
+        "command": "smart-pr-creator.webhookHistory",
+        "title": "View Webhook History",
+        "category": "Smart PR Creator",
+        "icon": "$(history)"
       }
     ],
     "menus": {
@@ -132,6 +168,70 @@
           ],
           "default": "github",
           "description": "Git hosting platform"
+        },
+        "smartPrCreator.webhooks": {
+          "type": "object",
+          "default": {
+            "enabled": false,
+            "endpoints": []
+          },
+          "description": "Webhook configuration for PR notifications",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable webhook notifications"
+            },
+            "endpoints": {
+              "type": "array",
+              "default": [],
+              "description": "List of webhook endpoints",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Webhook endpoint name"
+                  },
+                  "url": {
+                    "type": "string",
+                    "description": "Webhook URL"
+                  },
+                  "events": {
+                    "type": "array",
+                    "description": "Events to trigger webhook",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "pr_created",
+                        "pr_updated",
+                        "pr_merged",
+                        "pr_closed"
+                      ]
+                    }
+                  },
+                  "headers": {
+                    "type": "object",
+                    "description": "Additional headers for webhook requests"
+                  },
+                  "secret": {
+                    "type": "string",
+                    "description": "Secret for webhook authentication"
+                  },
+                  "retryAttempts": {
+                    "type": "number",
+                    "default": 3,
+                    "description": "Number of retry attempts for failed webhooks"
+                  },
+                  "timeout": {
+                    "type": "number",
+                    "default": 10000,
+                    "description": "Timeout for webhook requests in milliseconds"
+                  }
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -151,17 +251,18 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.100.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
-    "eslint": "^9.25.1",
-    "esbuild": "^0.25.3",
-    "npm-run-all": "^4.1.5",
-    "typescript": "^5.8.3",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.5.0",
+    "esbuild": "^0.25.3",
+    "eslint": "^9.25.1",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.8.3"
   },
   "dependencies": {
     "axios": "^1.7.2",

@@ -7,12 +7,14 @@ A VS Code extension that automates pull request creation with AI-generated descr
 - **🤖 GitHub Copilot Integration**: Generate intelligent PR descriptions using GitHub Copilot's language models
 - **☁️ Azure DevOps Integration**: Full integration with Azure DevOps using Azure CLI
 - **📝 Smart Analysis**: Analyze commits, changed files, and work items automatically with AI insights
+- **🔗 Webhook Integration**: Send real-time notifications to Microsoft Teams, Slack, Discord, or custom endpoints
 - **👥 Reviewer Management**: Add reviewers directly from VS Code
 - **🔄 Branch Status**: Check if your branch is up-to-date before creating PRs
 - **📋 Work Item Linking**: Automatically detect and link work items from commits
 - **⚡ Quick Actions**: Create PRs directly from the Source Control panel
 - **🔍 Status Checking**: Monitor Azure CLI setup and authentication status
 - **🧠 AI Provider Options**: Choose between GitHub Copilot, OpenAI, Azure OpenAI, or Anthropic
+- **📊 Analytics**: Track webhook success rates and PR creation patterns
 
 ## Prerequisites
 
@@ -82,6 +84,9 @@ Use `Smart PR Creator: Check Azure CLI Status` to verify:
 | `smart-pr-creator.checkAzureStatus`    | Check Azure CLI status              |
 | `smart-pr-creator.listAvailableModels` | List available AI models            |
 | `smart-pr-creator.selectAIModel`       | Select AI model for PR descriptions |
+| `smart-pr-creator.configureWebhooks`   | Configure webhook notifications     |
+| `smart-pr-creator.testWebhook`         | Test webhook connection             |
+| `smart-pr-creator.webhookHistory`      | View webhook activity history       |
 
 ## Configuration
 
@@ -170,6 +175,34 @@ When using the `copilot` AI provider:
 - Multi-select reviewer interface
 - Optional reviewer assignment
 
+## Webhook Integration
+
+### Supported Webhook Services
+
+- **Microsoft Teams**
+- **Slack**
+- **Discord**
+- **Custom Webhook URLs**
+
+### Configuration
+
+Configure webhook settings in `settings.json`:
+
+```json
+{
+  "smartPrCreator.webhook.enabled": true,
+  "smartPrCreator.webhook.url": "https://your-webhook-url",
+  "smartPrCreator.webhook.secret": "optional-secret"
+}
+```
+
+### Features
+
+- **Real-time Notifications**: Get instant updates on PR creation and status changes
+- **Customizable Payloads**: Define custom payloads for webhook notifications
+- **Retry Mechanism**: Automatic retry for failed webhook deliveries
+- **Analytics**: Track webhook success rates and PR creation patterns
+
 ## Troubleshooting
 
 ### Common Issues
@@ -193,6 +226,44 @@ When using the `copilot` AI provider:
 
    - Ensure your repository's remote URL points to Azure DevOps
    - Check with: `git remote get-url origin`
+
+5. **"GitHub Copilot not working"**
+
+   - Install the GitHub Copilot extension in VS Code
+   - Sign in to GitHub and verify active subscription
+   - Check extension status in VS Code
+
+6. **"Webhook notifications not working"**
+
+   - Test webhook connection using Command Palette
+   - Verify webhook URL in Teams/Slack configuration
+   - Check VS Code Output panel for error messages
+
+## 📚 Documentation
+
+- **[Installation Guide](docs/user-guides/INSTALLATION_GUIDE.md)** - Complete setup instructions
+- **[Teams Integration](docs/user-guides/TEAMS_SETUP_GUIDE.md)** - Microsoft Teams webhook setup
+- **[Webhook Guide](docs/user-guides/WEBHOOK_INTEGRATION_GUIDE.md)** - Complete webhook documentation
+- **[Model Selection](docs/user-guides/MODEL_SELECTION_GUIDE.md)** - AI model configuration
+- **[Development Docs](docs/development/DEVELOPMENT.md)** - Technical documentation
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `npm test`
+5. Submit a pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- Microsoft for Azure DevOps CLI and VS Code platform
+- GitHub for Copilot integration
+- The VS Code extension development community
 
 5. **"Branch not found on remote"**
    - Push your branch first: `git push origin <branch-name>`

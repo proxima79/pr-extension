@@ -36,8 +36,30 @@ export function activate(context: vscode.ExtensionContext) {
 		await selectAIModel();
 	});
 
+	const configureWebhooksCommand = vscode.commands.registerCommand('smart-pr-creator.configureWebhooks', async () => {
+		await configureWebhooks();
+	});
+
+	const testWebhookCommand = vscode.commands.registerCommand('smart-pr-creator.testWebhook', async () => {
+		await testWebhookConnection();
+	});
+
+	const webhookHistoryCommand = vscode.commands.registerCommand('smart-pr-creator.webhookHistory', async () => {
+		await viewWebhookHistory();
+	});
+
 	// Add commands to subscriptions
-	context.subscriptions.push(createPRCommand, createPRWithAICommand, analyzeBranchCommand, checkStatusCommand, listModelsCommand, selectModelCommand);
+	context.subscriptions.push(
+		createPRCommand,
+		createPRWithAICommand,
+		analyzeBranchCommand,
+		checkStatusCommand,
+		listModelsCommand,
+		selectModelCommand,
+		configureWebhooksCommand,
+		testWebhookCommand,
+		webhookHistoryCommand
+	);
 
 	// Register status bar item
 	const statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -818,6 +840,246 @@ function generateModelListHTML(allModels: any[], copilotModels: any[]): string {
 		</body>
 		</html>
 	`;
+}
+
+async function configureWebhooks() {
+	try {
+		const action = await vscode.window.showQuickPick([
+			{ label: '$(add) Add New Webhook', description: 'Configure a new webhook endpoint', value: 'add' },
+			{ label: '$(list-unordered) View Existing Webhooks', description: 'View and manage existing webhooks', value: 'view' },
+			{ label: '$(settings-gear) Enable/Disable Webhooks', description: 'Toggle webhook functionality', value: 'toggle' }
+		], {
+			title: 'Webhook Configuration',
+			placeHolder: 'Choose a webhook management action'
+		});
+
+		if (!action) {
+			return;
+		}
+
+		switch (action.value) {
+			case 'add':
+				await addNewWebhook();
+				break;
+			case 'view':
+				await viewExistingWebhooks();
+				break;
+			case 'toggle':
+				await toggleWebhooks();
+				break;
+		}
+	} catch (error) {
+		vscode.window.showErrorMessage(`Failed to configure webhooks: ${error}`);
+	}
+}
+
+async function addNewWebhook() {
+	try {
+		// Get webhook name
+		const name = await vscode.window.showInputBox({
+			title: 'Webhook Name',
+			placeHolder: 'Enter a name for this webhook (e.g., "Slack Notifications")',
+			validateInput: (value) => value.trim() ? null : 'Name is required'
+		});
+		if (!name) {
+			return;
+		}
+
+		// Get webhook URL
+		const url = await vscode.window.showInputBox({
+			title: 'Webhook URL',
+			placeHolder: 'Enter the webhook URL (e.g., https://hooks.slack.com/...)',
+			validateInput: (value) => {
+				if (!value.trim()) {
+					return 'URL is required';
+				}
+				if (!value.startsWith('http')) {
+					return 'URL must start with http:// or https://';
+				}
+				return null;
+			}
+		});
+		if (!url) {
+			return;
+		}
+
+		// Select events
+		const eventOptions = [
+			{ label: 'PR Created', description: 'Trigger when a new PR is created', value: 'pr_created', picked: true },
+			{ label: 'PR Updated', description: 'Trigger when a PR is updated', value: 'pr_updated' },
+			{ label: 'PR Merged', description: 'Trigger when a PR is merged', value: 'pr_merged' },
+			{ label: 'PR Closed', description: 'Trigger when a PR is closed', value: 'pr_closed' }
+		];
+
+		const selectedEvents = await vscode.window.showQuickPick(eventOptions, {
+			title: 'Select Events',
+			placeHolder: 'Choose which events should trigger this webhook',
+			canPickMany: true
+		});
+		if (!selectedEvents || selectedEvents.length === 0) {
+			return;
+		}
+
+		// Save webhook configuration
+		const config = vscode.workspace.getConfiguration('smartPrCreator');
+		const webhooksConfig = config.get('webhooks') as any || { enabled: false, endpoints: [] };
+		
+		const newWebhook = {
+			name: name.trim(),
+			url: url.trim(),
+			events: selectedEvents.map(e => e.value),
+			retryAttempts: 3,
+			timeout: 10000,
+			headers: {
+				'Content-Type': 'application/json'
+			}
+		};
+
+		webhooksConfig.endpoints.push(newWebhook);
+		await config.update('webhooks', webhooksConfig, vscode.ConfigurationTarget.Global);
+
+		vscode.window.showInformationMessage(`Webhook "${name}" configured successfully!`);
+	} catch (error) {
+		vscode.window.showErrorMessage(`Failed to add webhook: ${error}`);
+	}
+}
+
+async function viewExistingWebhooks() {
+	try {
+		const config = vscode.workspace.getConfiguration('smartPrCreator');
+		const webhooksConfig = config.get('webhooks') as any || { enabled: false, endpoints: [] };
+
+		if (webhooksConfig.endpoints.length === 0) {
+			vscode.window.showInformationMessage('No webhooks configured. Use "Configure Webhooks" to add one.');
+			return;
+		}
+
+		const webhookItems = webhooksConfig.endpoints.map((webhook: any) => ({
+			label: `$(link) ${webhook.name}`,
+			description: webhook.url,
+			detail: `Events: ${webhook.events.join(', ')}`
+		}));
+
+		await vscode.window.showQuickPick(webhookItems, {
+			title: 'Configured Webhooks',
+			placeHolder: 'Your configured webhook endpoints'
+		});
+	} catch (error) {
+		vscode.window.showErrorMessage(`Failed to view webhooks: ${error}`);
+	}
+}
+
+async function toggleWebhooks() {
+	try {
+		const config = vscode.workspace.getConfiguration('smartPrCreator');
+		const webhooksConfig = config.get('webhooks') as any || { enabled: false, endpoints: [] };
+		
+		const newState = !webhooksConfig.enabled;
+		webhooksConfig.enabled = newState;
+		
+		await config.update('webhooks', webhooksConfig, vscode.ConfigurationTarget.Global);
+		
+		vscode.window.showInformationMessage(
+			`Webhooks ${newState ? 'enabled' : 'disabled'} successfully!`
+		);
+	} catch (error) {
+		vscode.window.showErrorMessage(`Failed to toggle webhooks: ${error}`);
+	}
+}
+
+async function testWebhookConnection() {
+	try {
+		const config = vscode.workspace.getConfiguration('smartPrCreator');
+		const webhooksConfig = config.get('webhooks') as any || { enabled: false, endpoints: [] };
+
+		if (webhooksConfig.endpoints.length === 0) {
+			vscode.window.showInformationMessage('No webhooks configured. Use "Configure Webhooks" to add one first.');
+			return;
+		}
+
+		const webhookItems = webhooksConfig.endpoints.map((webhook: any) => ({
+			label: `$(link) ${webhook.name}`,
+			description: webhook.url,
+			webhook
+		}));
+
+		const selected = await vscode.window.showQuickPick(webhookItems, {
+			title: 'Test Webhook Connection',
+			placeHolder: 'Select a webhook to test'
+		});
+
+		if (selected) {
+			// Import WebhookService dynamically
+			const webhookModule = await import('./services/webhookService.js');
+			const webhookService = new webhookModule.WebhookService();
+			
+			vscode.window.withProgress({
+				location: vscode.ProgressLocation.Notification,
+				title: `Testing webhook "${(selected as any).webhook.name}"...`,
+				cancellable: false
+			}, async () => {
+				const success = await webhookService.testWebhook((selected as any).webhook.url, (selected as any).webhook.headers || {});
+				
+				if (success) {
+					vscode.window.showInformationMessage(`✅ Webhook connection successful!`);
+				} else {
+					vscode.window.showErrorMessage(`❌ Webhook connection failed. Check the URL and try again.`);
+				}
+			});
+		}
+	} catch (error) {
+		vscode.window.showErrorMessage(`Failed to test webhook connection: ${error}`);
+	}
+}
+
+async function viewWebhookHistory() {
+	try {
+		// Import WebhookService dynamically
+		const webhookModule = await import('./services/webhookService.js');
+		const webhookService = new webhookModule.WebhookService();
+		const history = await webhookService.getWebhookHistory();
+
+		if (history.length === 0) {
+			vscode.window.showInformationMessage('No webhook history available yet. Webhooks will appear here after PRs are created.');
+			return;
+		}
+
+		// Create a webview to display webhook history
+		const panel = vscode.window.createWebviewPanel(
+			'webhookHistory',
+			'Webhook History',
+			vscode.ViewColumn.One,
+			{ enableScripts: true }
+		);
+
+		const historyHTML = `
+			<!DOCTYPE html>
+			<html>
+			<head>
+				<style>
+					body { font-family: var(--vscode-font-family); margin: 20px; }
+					.history-item { border: 1px solid #ccc; margin: 10px 0; padding: 10px; border-radius: 5px; }
+					.success { border-left: 4px solid green; }
+					.failure { border-left: 4px solid red; }
+				</style>
+			</head>
+			<body>
+				<h1>Webhook History</h1>
+				${history.map((item: any) => `
+					<div class="history-item ${item.success ? 'success' : 'failure'}">
+						<strong>${item.webhookName}</strong> - ${item.event}<br>
+						<small>${new Date(item.timestamp).toLocaleString()}</small>
+						${item.error ? `<br><span style="color: red;">Error: ${item.error}</span>` : ''}
+					</div>
+				`).join('')}
+			</body>
+			</html>
+		`;
+
+		panel.webview.html = historyHTML;
+	} catch (error) {
+		vscode.window.showErrorMessage(`Failed to view webhook history: ${error}`);
+	}
 }
 
 // This method is called when your extension is deactivated

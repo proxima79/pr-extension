@@ -850,14 +850,14 @@ Please analyze these changes and generate a professional PR description that wil
         ];
     }
 
-    // Placeholder methods for other AI providers
+    // Direct API integration methods for other AI providers
     private async generateWithAnthropic(
         changes: GitChange[],
         commits: GitCommit[],
         sourceBranch: string,
         targetBranch: string
     ): Promise<PRDescription | null> {
-        // For now, try to use Copilot API with Claude models if available
+        // First try to use Claude models via Copilot if available
         try {
             const claudeSelector: ModelSelector = {
                 vendor: 'copilot',
@@ -869,11 +869,50 @@ Please analyze these changes and generate a professional PR description that wil
                 return result;
             }
         } catch (error) {
-            console.log('Claude via Copilot not available, would need direct Anthropic integration');
+            console.log('Claude via Copilot not available, trying direct Anthropic integration');
         }
         
-        // TODO: Implement direct Anthropic API integration
-        console.log('Direct Anthropic integration not implemented yet');
+        // Direct Anthropic API integration
+        try {
+            const anthropicApiKey = await this.getAnthropicApiKey();
+            if (!anthropicApiKey) {
+                console.log('Anthropic API key not configured');
+                return null;
+            }
+
+            const prompt = this.buildPrompt(changes, commits, sourceBranch, targetBranch);
+            
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': anthropicApiKey,
+                    'anthropic-version': '2023-06-01'
+                },
+                body: JSON.stringify({
+                    model: 'claude-3-5-sonnet-20241022',
+                    max_tokens: 2000,
+                    messages: [{
+                        role: 'user',
+                        content: prompt
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Anthropic API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json() as any;
+            const content = data.content?.[0]?.text;
+            
+            if (content) {
+                return this.parseAIResponse(content);
+            }
+        } catch (error) {
+            console.error('Error with direct Anthropic integration:', error);
+        }
+        
         return null;
     }
 
@@ -883,8 +922,46 @@ Please analyze these changes and generate a professional PR description that wil
         sourceBranch: string,
         targetBranch: string
     ): Promise<PRDescription | null> {
-        // TODO: Implement direct OpenAI API integration
-        console.log('Direct OpenAI integration not implemented yet');
+        try {
+            const openaiApiKey = await this.getOpenAIApiKey();
+            if (!openaiApiKey) {
+                console.log('OpenAI API key not configured');
+                return null;
+            }
+
+            const prompt = this.buildPrompt(changes, commits, sourceBranch, targetBranch);
+            
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${openaiApiKey}`
+                },
+                body: JSON.stringify({
+                    model: 'gpt-4o',
+                    messages: [{
+                        role: 'user',
+                        content: prompt
+                    }],
+                    max_tokens: 2000,
+                    temperature: 0.3
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json() as any;
+            const content = data.choices?.[0]?.message?.content;
+            
+            if (content) {
+                return this.parseAIResponse(content);
+            }
+        } catch (error) {
+            console.error('Error with OpenAI integration:', error);
+        }
+        
         return null;
     }
 
@@ -894,8 +971,173 @@ Please analyze these changes and generate a professional PR description that wil
         sourceBranch: string,
         targetBranch: string
     ): Promise<PRDescription | null> {
-        // TODO: Implement Azure OpenAI integration
-        console.log('Azure OpenAI integration not implemented yet');
+        try {
+            const azureConfig = await this.getAzureOpenAIConfig();
+            if (!azureConfig.apiKey || !azureConfig.endpoint || !azureConfig.deploymentName) {
+                console.log('Azure OpenAI configuration incomplete');
+                return null;
+            }
+
+            const prompt = this.buildPrompt(changes, commits, sourceBranch, targetBranch);
+            
+            const response = await fetch(`${azureConfig.endpoint}/openai/deployments/${azureConfig.deploymentName}/chat/completions?api-version=2024-02-01`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'api-key': azureConfig.apiKey
+                },
+                body: JSON.stringify({
+                    messages: [{
+                        role: 'user',
+                        content: prompt
+                    }],
+                    max_tokens: 2000,
+                    temperature: 0.3
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Azure OpenAI API error: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json() as any;
+            const content = data.choices?.[0]?.message?.content;
+            
+            if (content) {
+                return this.parseAIResponse(content);
+            }
+        } catch (error) {
+            console.error('Error with Azure OpenAI integration:', error);
+        }
+        
         return null;
+    }
+
+    // Helper methods for API key management
+    private async getAnthropicApiKey(): Promise<string | null> {
+        try {
+            // Try to get from VS Code secrets first
+            const secretKey = await vscode.window.showInputBox({
+                prompt: 'Enter your Anthropic API key',
+                password: true,
+                placeHolder: 'sk-ant-...'
+            });
+            return secretKey || null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    private async getOpenAIApiKey(): Promise<string | null> {
+        try {
+            // Try to get from VS Code secrets first
+            const secretKey = await vscode.window.showInputBox({
+                prompt: 'Enter your OpenAI API key',
+                password: true,
+                placeHolder: 'sk-...'
+            });
+            return secretKey || null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    private async getAzureOpenAIConfig(): Promise<{
+        apiKey: string | null;
+        endpoint: string | null;
+        deploymentName: string | null;
+    }> {
+        try {
+            const apiKey = await vscode.window.showInputBox({
+                prompt: 'Enter your Azure OpenAI API key',
+                password: true
+            });
+            
+            const endpoint = await vscode.window.showInputBox({
+                prompt: 'Enter your Azure OpenAI endpoint',
+                placeHolder: 'https://your-resource.openai.azure.com'
+            });
+            
+            const deploymentName = await vscode.window.showInputBox({
+                prompt: 'Enter your Azure OpenAI deployment name',
+                placeHolder: 'gpt-4o'
+            });
+            
+            return { 
+                apiKey: apiKey || null, 
+                endpoint: endpoint || null, 
+                deploymentName: deploymentName || null 
+            };
+        } catch (error) {
+            return { apiKey: null, endpoint: null, deploymentName: null };
+        }
+    }
+
+    // Helper method to parse AI responses from different providers
+    private parseAIResponse(content: string): PRDescription {
+        // Try to extract title and description from the response
+        const lines = content.split('\n');
+        let title = '';
+        let description = '';
+        
+        // Look for title in first few lines
+        for (let i = 0; i < Math.min(5, lines.length); i++) {
+            const line = lines[i].trim();
+            if (line && !title && line.length < 100) {
+                // Remove common prefixes
+                title = line.replace(/^(Title:|PR Title:|Pull Request Title:)\s*/i, '').trim();
+                break;
+            }
+        }
+        
+        // Use the rest as description
+        const titleIndex = lines.findIndex(line => line.trim() === title);
+        if (titleIndex >= 0 && titleIndex < lines.length - 1) {
+            description = lines.slice(titleIndex + 1).join('\n').trim();
+        } else {
+            // If we can't find the title in the response, use everything after first line
+            description = lines.slice(1).join('\n').trim();
+        }
+        
+        // Fallback title if none found
+        if (!title) {
+            title = 'Pull Request';
+        }
+        
+        // Fallback description if none found
+        if (!description) {
+            description = content.trim();
+        }
+        
+        return { title, description };
+    }
+
+    // Helper method to build prompt for AI providers
+    private buildPrompt(changes: GitChange[], commits: GitCommit[], sourceBranch: string, targetBranch: string): string {
+        const prompt = `As a senior software engineer, analyze these code changes and generate a professional pull request description.
+
+Branch: ${sourceBranch} → ${targetBranch}
+
+Recent Commits:
+${commits.map(commit => `- ${commit.hash.substring(0, 8)}: ${commit.message} (by ${commit.author})`).join('\n')}
+
+Code Changes Summary:
+${changes.map(change => `- ${change.file}: ${change.status}${change.insertions ? ` +${change.insertions}` : ''}${change.deletions ? ` -${change.deletions}` : ''}`).join('\n')}
+
+Please provide:
+1. A clear, concise title (under 72 characters)
+2. A detailed description with:
+   - Summary of changes
+   - Technical details
+   - Testing considerations
+   - Any breaking changes or special notes
+
+Format your response as:
+Title: [Your PR title here]
+
+Description:
+[Your detailed description here]`;
+
+        return prompt;
     }
 }

@@ -12,3 +12,18 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+
+# Development documentation
+docs/development/**
+test-*.js
+**/test/**
+**/*.test.ts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
