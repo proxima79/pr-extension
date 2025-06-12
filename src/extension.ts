@@ -351,12 +351,26 @@ async function createPullRequest(useAI: boolean, azureCliService: AzureCliServic
 			} else if (result === 'Show in Terminal') {
 				const terminal = vscode.window.createTerminal('Smart PR Creator');
 				terminal.show();
-				terminal.sendText(`echo "Pull Request Created Successfully!"`);
-				terminal.sendText(`echo "PR #${prResult.pullRequestId}: ${title}"`);
-				terminal.sendText(`echo "URL: ${prResult.url}"`);
-				terminal.sendText(`echo "Organization: ${repoInfo.organization}"`);
-				terminal.sendText(`echo "Project: ${repoInfo.project}"`);
-				terminal.sendText(`echo "Repository: ${repoInfo.repository}"`);
+				
+				// Create a single, nicely formatted output
+				const prInfo = `
+═══════════════════════════════════════════════════════════════
+🎉 Pull Request Created Successfully!
+═══════════════════════════════════════════════════════════════
+
+📋 PR Details:
+   • ID: #${prResult.pullRequestId}
+   • Title: ${title}
+   • URL: ${prResult.url}
+
+🏢 Repository Info:
+   • Organization: ${repoInfo.organization}
+   • Project: ${repoInfo.project}
+   • Repository: ${repoInfo.repository}
+
+═══════════════════════════════════════════════════════════════
+`;
+				terminal.sendText(`echo '${prInfo.replace(/'/g, "'\\''")}'; echo`);
 			}
 		});
 

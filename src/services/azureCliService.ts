@@ -201,9 +201,13 @@ export class AzureCliService {
             // Parse the response
             const response = JSON.parse(stdout);
             
+            // Always construct the web page URL instead of using the API URL from response
+            // The response.url from Azure CLI is typically an API endpoint, not the web page URL
+            const webPageUrl = `https://dev.azure.com/${repoInfo.organization}/${repoInfo.project}/_git/${repoInfo.repository}/pullrequest/${response.pullRequestId}`;
+            
             const result: AzurePRResult = {
                 pullRequestId: response.pullRequestId,
-                url: response.url || `https://dev.azure.com/${repoInfo.organization}/${repoInfo.project}/_git/${repoInfo.repository}/pullrequest/${response.pullRequestId}`,
+                url: webPageUrl,
                 status: response.status
             };
 

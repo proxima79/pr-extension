@@ -5,6 +5,7 @@ All notable changes to the "smart-pr-creator" extension will be documented in th
 ## [1.0.0] - 2025-06-12
 
 ### Added
+
 - **🤖 GitHub Copilot Integration**: Real AI-powered PR description generation
 - **🔗 Webhook Integration**: Microsoft Teams, Slack, Discord notifications
 - **📝 Multi-Model AI Support**: GPT-4o, Claude 3.5 Sonnet, O1 Preview/Mini
@@ -17,6 +18,7 @@ All notable changes to the "smart-pr-creator" extension will be documented in th
 - **⚡ Quick Actions**: Source Control panel integration
 
 ### Features
+
 - Complete Azure DevOps integration using Azure CLI
 - Rich Teams message cards with PR details and action buttons
 - Retry logic with exponential backoff for webhook failures
@@ -29,6 +31,7 @@ All notable changes to the "smart-pr-creator" extension will be documented in th
 - Settings-based configuration management
 
 ### Commands Added
+
 - `Smart PR Creator: Create Pull Request`
 - `Smart PR Creator: Create PR with AI Description`
 - `Smart PR Creator: Configure Webhooks`
@@ -40,6 +43,7 @@ All notable changes to the "smart-pr-creator" extension will be documented in th
 - `Smart PR Creator: Select AI Model`
 
 ### Configuration
+
 - Webhook endpoints with Teams/Slack/Discord support
 - AI provider and model selection (Copilot/OpenAI/Azure/Anthropic)
 - Customizable retry attempts and timeouts
@@ -47,4 +51,5 @@ All notable changes to the "smart-pr-creator" extension will be documented in th
 - File analysis limits and inclusion options
 
 ## [Unreleased]
+
 - Future enhancements and community contributions
